@@ -11,15 +11,20 @@ const aelGrammar = ohm.grammar(String.raw`Ael {
   Statement = let id "=" Exp                  --vardec
             | Var "=" Exp                     --assign
             | print Exp                       --print
-  Exp       = Exp ("+" | "-") Term            --binary
+  Exp       = Exp relop Exp1                  --binary
+            | Exp1
+  Exp1      = Exp1 ("+" | "-") Term           --binary
             | Term
-  Term      = Term ("*"| "/") Factor          --binary
+  Term      = Term ("*"| "/" | "%") Factor    --binary
             | Factor
-  Factor    = Var
+  Factor    = Primary "**" Factor             --exponentiation 
+            | Primary
+  Primary   = Var
             | num
             | "(" Exp ")"                     --parens
             | ("-" | abs | sqrt) Factor       --unary
   Var       = id
+  relop     = "=="
   num       = digit+ ("." digit+)?
   let       = "let" ~alnum
   print     = "print" ~alnum
@@ -27,7 +32,7 @@ const aelGrammar = ohm.grammar(String.raw`Ael {
   sqrt      = "sqrt" ~alnum
   keyword   = let | print | abs | sqrt
   id        = ~keyword letter alnum*
-  space    += "//" (~"\n" any)* ("\n" | end)  --comment
+  space    += "//" (~"\n" any)* ("\nrm and Factor) in order to capture precedence, and use other tricks to capture associativity. In order to simplify the remainder of our specification (we haven’t done semantics yet) we need to abstract away this messy stuff. We want to transform concrete syntax trees into simpler (but no less precise!!) abstract syntax trees:" | end)  --comment
 }`)
 
 const astBuilder = aelGrammar.createSemantics().addOperation("ast", {
@@ -49,10 +54,10 @@ const astBuilder = aelGrammar.createSemantics().addOperation("ast", {
   Term_binary(left, op, right) {
     return new ast.BinaryExpression(op.sourceString, left.ast(), right.ast())
   },
-  Factor_unary(op, operand) {
+  Primary_unary(op, operand) {
     return new ast.UnaryExpression(op.sourceString, operand.ast())
   },
-  Factor_parens(_open, expression, _close) {
+  Primary_parens(_open, expression, _close) {
     return expression.ast()
   },
   Var(id) {
