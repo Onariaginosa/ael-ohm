@@ -32,7 +32,7 @@ const aelGrammar = ohm.grammar(String.raw`Ael {
   sqrt      = "sqrt" ~alnum
   keyword   = let | print | abs | sqrt
   id        = ~keyword letter alnum*
-  space    += "//" (~"\n" any)* ("\nrm and Factor) in order to capture precedence, and use other tricks to capture associativity. In order to simplify the remainder of our specification (we haven’t done semantics yet) we need to abstract away this messy stuff. We want to transform concrete syntax trees into simpler (but no less precise!!) abstract syntax trees:" | end)  --comment
+  space    += "//" (~"\n" any)* ("\n" | end)  --comment
 }`)
 
 const astBuilder = aelGrammar.createSemantics().addOperation("ast", {
@@ -49,6 +49,9 @@ const astBuilder = aelGrammar.createSemantics().addOperation("ast", {
     return new ast.PrintStatement(expression.ast())
   },
   Exp_binary(left, op, right) {
+    return new ast.BinaryExpression(op.sourceString, left.ast(), right.ast())
+  },
+  Exp1_binary(left, op, right) {
     return new ast.BinaryExpression(op.sourceString, left.ast(), right.ast())
   },
   Term_binary(left, op, right) {
